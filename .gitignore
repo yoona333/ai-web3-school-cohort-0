@@ -1,0 +1,24 @@
+# Local env
+.env
+.env.*
+!.env.example
+
+# Secrets and wallets
+*.key
+*.pem
+*.p12
+*.keystore
+secrets/
+wallets/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Dependencies/build outputs
+node_modules/
+dist/
+build/
+coverage/
+
