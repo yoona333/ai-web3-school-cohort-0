@@ -15,6 +15,7 @@
 - 归档 AI × Web3 小实验、prompt、代码片段和结论
 - 沉淀 Handbook feedback，方便后续提交 issue 或 PR
 - 为 Hackathon 准备题目、方案、原型和提交材料
+- 记录 coding / learning agent 工作流和安全边界
 
 ## Privacy Reminder
 
@@ -35,6 +36,7 @@ git diff --staged
 
 - `profile.md`: 学习者画像、目标和约束
 - `learning-plan.md`: 阶段计划、每周节奏和交付物
+- `agent-workflow.md`: Coding / learning agent 工作流、确认规则和安全边界
 - `daily/`: 每日打卡草稿与复盘
 - `tasks/`: 课程任务证明、完成记录和链接
 - `experiments/`: AI × Web3 实验记录
@@ -57,4 +59,3 @@ git diff --staged
 3. Reflect: 写 `daily/YYYY-MM-DD.md`
 4. Submit: 将可公开内容整理到 WCB 或指定平台
 5. Feedback: 如果 Handbook 有不清楚或可改进处，记录到 `handbook-feedback/`
-
