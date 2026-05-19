@@ -7,6 +7,7 @@
 - Status: ready to submit manually
 - Related links:
   - Agent workflow: https://github.com/yoona333/ai-web3-school-cohort-0/blob/main/agent-workflow.md
+  - Run record: https://github.com/yoona333/ai-web3-school-cohort-0/blob/main/submissions/2026-05-20-agent-workflow-run-record.md
   - Proof repo: https://github.com/yoona333/ai-web3-school-cohort-0
   - Learning Agent Prompt: https://aiweb3.school/learning-agent.zh.txt
   - Handbook: https://aiweb3.school/zh/handbook/
@@ -19,6 +20,7 @@
 - Make clear that the agent does not replace learning or submit sensitive operations.
 - Record confirmation rules for repo changes, commits, pushes, and WCB submission.
 - Record safety boundaries for wallet signing, transfers, approvals, API keys, tokens, private keys, and seed phrases.
+- Include the selected agent/tool, assigned learning task, key prompt/configuration, successful output, and one manual review/correction record.
 
 ## Configuration Result
 
@@ -35,12 +37,14 @@ It covers:
 - Handbook feedback workflow
 - WCB manual submission workflow
 - default 2-3 hour daily timebox
+- WCB-ready run record with the five required review points
 
 ## Proof Type
 
 - Primary proof type: GitHub public repository link
 - Proof link: https://github.com/yoona333/ai-web3-school-cohort-0
 - Direct workflow link: https://github.com/yoona333/ai-web3-school-cohort-0/blob/main/agent-workflow.md
+- Direct run record: https://github.com/yoona333/ai-web3-school-cohort-0/blob/main/submissions/2026-05-20-agent-workflow-run-record.md
 
 ## What Reviewers Need to See
 
@@ -49,12 +53,13 @@ It covers:
 - The repo records daily notes, task proof, submission drafts, and Handbook feedback.
 - File changes, commits, pushes, and platform submissions require human confirmation.
 - Sensitive secrets and wallet operations are explicitly out of scope for automatic agent execution.
+- The run record includes the selected tool, assigned task, key prompt/configuration, successful output, and manual review/correction record.
 
 ## Submission Draft
 
 The WCB submission draft is stored in `submissions/2026-05-20-agent-workflow-submission.md`.
+The WCB-ready run record is stored in `submissions/2026-05-20-agent-workflow-run-record.md`.
 
 ## Reflection
 
 This task turns the agent from a general assistant into a bounded learning system: useful for planning and documentation, but constrained around public proof, user confirmation, and sensitive Web3 operations.
-
