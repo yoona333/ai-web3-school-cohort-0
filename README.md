@@ -2,6 +2,35 @@
 
 这是我的 AI × Web3 School Cohort 0 个人学习仓库，用来公开记录学习计划、任务证明、实验记录、每日打卡草稿、Handbook feedback 和 Hackathon 准备过程。
 
+## Week 1 Review Pack / 本周汇总入口
+
+这是 2026-05-19 至 2026-05-21 的公开学习 Pack。审核者可以从本 README 快速看到本周学了什么、做了什么、验证了什么、修正了什么。
+
+Final WCB submission link:
+
+```text
+https://github.com/yoona333/ai-web3-school-cohort-0
+```
+
+### Review Summary
+
+| Requirement | Proof |
+| --- | --- |
+| AI 学习记录 / 概念卡片 | [Learning plan](learning-plan.md), [Daily note 2026-05-19](daily/2026-05-19.md), [Daily note 2026-05-20](daily/2026-05-20.md) |
+| Learning Agent / AI 工具实践 | [Agent workflow](agent-workflow.md), [Agent workflow run record](submissions/2026-05-20-agent-workflow-run-record.md) |
+| Web3 概念卡片 | [EOA / smart account / multisig comparison](tasks/2026-05-20-account-types-comparison.md) |
+| AI × Web3 最小交叉实验 | [ERC-4337 flow learning demo](experiments/erc4337-flow-demo/README.md), [interactive HTML demo](experiments/erc4337-flow-demo/index.html) |
+| 链上验证或流程图 | 本周不提交真实测试网交易哈希或合约地址；使用 [ERC-4337 flow demo](experiments/erc4337-flow-demo/README.md) 作为账户抽象流程 proof |
+| 问题 / 失败 / 人工修正记录 | [Manual review and correction record](submissions/2026-05-20-agent-workflow-run-record.md#5-manual-review-correction-or-rejection-record), [ERC-4337 demo submission draft](submissions/2026-05-21-erc4337-flow-demo-submission.md) |
+
+### What Reviewers Can Verify
+
+- AI: I created a personal learning plan and daily learning records.
+- Agent / workflow: I configured a bounded learning agent workflow with human confirmation rules.
+- Web3: I wrote a comparison note for EOA, smart accounts, and multisig accounts.
+- AI × Web3: I built a static ERC-4337 flow explainer that turns a learning question into a role-based account abstraction flow.
+- Safety: This Pack avoids private keys, seed phrases, API keys, tokens, `.env` files, wallet signatures, transfers, approvals, and contract writes.
+
 ## Links
 
 - AI × Web3 School Handbook: https://aiweb3.school/zh/handbook/

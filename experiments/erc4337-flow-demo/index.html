@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ERC-4337 流程解释器</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2319715a'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='Arial' font-size='18' font-weight='700' fill='white'%3E4337%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8f4;
+      --surface: #ffffff;
+      --surface-soft: #eef4f1;
+      --ink: #17201c;
+      --muted: #5d6b64;
+      --line: #d7dfd9;
+      --green: #19715a;
+      --green-soft: #d9eee7;
+      --blue: #2a66a5;
+      --blue-soft: #dce9f7;
+      --amber: #9c681f;
+      --amber-soft: #f5ead7;
+      --red: #a74036;
+      --red-soft: #f4dfdc;
+      --shadow: 0 18px 45px rgba(35, 48, 42, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(25, 113, 90, 0.08) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(42, 102, 165, 0.06) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1160px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.45rem, 2.1vw, 2.15rem);
+      line-height: 1.12;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      max-width: 780px;
+      margin-top: 6px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      color: var(--green);
+      background: var(--green-soft);
+      border: 1px solid rgba(25, 113, 90, 0.2);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel,
+    .output-section,
+    .flow-board {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      position: sticky;
+      top: 18px;
+      padding: 18px;
+    }
+
+    .panel h2,
+    .output-section h2 {
+      font-size: 1rem;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    label,
+    .field-title {
+      color: #26332e;
+      font-size: 0.9rem;
+      font-weight: 720;
+    }
+
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fbfcfa;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 124px;
+      resize: vertical;
+      padding: 12px;
+    }
+
+    textarea:focus,
+    select:focus,
+    .toggle:focus-within {
+      border-color: rgba(25, 113, 90, 0.75);
+      box-shadow: 0 0 0 3px rgba(25, 113, 90, 0.13);
+    }
+
+    select {
+      height: 42px;
+      padding: 0 10px;
+    }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .chip,
+    .primary,
+    .ghost {
+      min-height: 38px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .chip {
+      background: var(--surface-soft);
+      color: #29453d;
+      font-size: 0.86rem;
+      font-weight: 680;
+    }
+
+    .chip:hover,
+    .ghost:hover,
+    .primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #fbfcfa;
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .primary {
+      background: var(--green);
+      color: #ffffff;
+      border-color: var(--green);
+      font-weight: 760;
+    }
+
+    .ghost {
+      background: var(--surface);
+      color: var(--green);
+      font-weight: 720;
+    }
+
+    .output {
+      display: grid;
+      gap: 16px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .metric {
+      min-height: 92px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.35rem;
+      line-height: 1;
+      margin-bottom: 8px;
+      color: var(--green);
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .output-section {
+      padding: 18px;
+    }
+
+    .answer {
+      display: grid;
+      gap: 12px;
+    }
+
+    .answer-main {
+      border-left: 4px solid var(--green);
+      background: var(--green-soft);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 1.02rem;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .flow-board {
+      padding: 18px;
+    }
+
+    .flow-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .flow-header h2 {
+      margin-bottom: 0;
+    }
+
+    .flow-toggle {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 172px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfa;
+      overflow-wrap: anywhere;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 32px;
+      right: -11px;
+      width: 12px;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .step:last-child::after {
+      display: none;
+    }
+
+    .step-number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .step h3 {
+      font-size: 0.98rem;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .step.paymaster {
+      background: var(--amber-soft);
+      border-color: rgba(156, 104, 31, 0.32);
+    }
+
+    .step.paymaster .step-number {
+      background: #ffffff;
+      color: var(--amber);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+
+    .role-list,
+    .risk-list,
+    .quiz-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .role-item,
+    .risk-item,
+    .quiz-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfa;
+    }
+
+    .role-item {
+      display: grid;
+      grid-template-columns: 116px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .role-name {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .role-desc,
+    .risk-item,
+    .quiz-answer {
+      color: var(--muted);
+      font-size: 0.91rem;
+    }
+
+    .risk-item strong {
+      color: var(--red);
+    }
+
+    .quiz-question {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-weight: 720;
+    }
+
+    .quiz-mark {
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 980px) {
+      .workspace,
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        position: static;
+      }
+
+      .flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .step::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .shell {
+        width: min(100vw - 22px, 1160px);
+        padding-top: 14px;
+      }
+
+      .topbar,
+      .flow-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .summary-strip,
+      .control-grid,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .role-item {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 1.45rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">4337</div>
+        <div>
+          <h1>ERC-4337 流程解释器</h1>
+          <p class="subtitle">把一个学习问题转成流程卡片、角色责任、风险提醒和 3 道自测题。</p>
+        </div>
+      </div>
+      <div class="status" title="页面不连接钱包、不请求 API、不读取本地密钥。">
+        <span class="dot" aria-hidden="true"></span>
+        离线 AI 辅助模板
+      </div>
+    </header>
+
+    <section class="workspace" aria-label="ERC-4337 learning workspace">
+      <aside class="panel">
+        <h2>输入</h2>
+        <form id="learning-form">
+          <div class="field">
+            <label for="question">学习问题</label>
+            <textarea id="question" name="question">我不懂为什么 ERC-4337 需要 Bundler</textarea>
+          </div>
+
+          <div class="examples" aria-label="示例问题">
+            <button class="chip" type="button" data-example="为什么不用普通交易池？">普通交易池</button>
+            <button class="chip" type="button" data-example="Paymaster 为什么要押金？">Paymaster 押金</button>
+            <button class="chip" type="button" data-example="EntryPoint 到底负责什么？">EntryPoint</button>
+            <button class="chip" type="button" data-example="UserOperation 和普通交易有什么区别？">UserOperation</button>
+          </div>
+
+          <div class="control-grid">
+            <div class="field">
+              <label for="role">观察角色</label>
+              <select id="role" name="role">
+                <option value="learner">学习者</option>
+                <option value="dapp">DApp 开发者</option>
+                <option value="bundler">Bundler 运营者</option>
+                <option value="paymaster">Paymaster 设计者</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="level">解释难度</label>
+              <select id="level" name="level">
+                <option value="beginner">入门</option>
+                <option value="intermediate">进阶</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="toggle">
+            <span class="field-title">包含 Paymaster 分支</span>
+            <input id="with-paymaster" name="with-paymaster" type="checkbox" checked>
+          </label>
+
+          <div class="actions">
+            <button class="primary" type="submit">生成解释</button>
+            <button class="ghost" id="reset-demo" type="button">重置</button>
+          </div>
+        </form>
+      </aside>
+
+      <section class="output" aria-live="polite">
+        <div class="summary-strip">
+          <div class="metric">
+            <strong>UserOp</strong>
+            <span>用户意图先被打包成 UserOperation，而不是直接作为普通交易广播。</span>
+          </div>
+          <div class="metric">
+            <strong>1 个入口</strong>
+            <span>Bundler 最终通过 EntryPoint 的 handleOps() 提交链上执行。</span>
+          </div>
+          <div class="metric">
+            <strong id="paymaster-metric">可选赞助</strong>
+            <span id="paymaster-metric-text">Paymaster 可以按策略替用户支付或赞助 gas。</span>
+          </div>
+        </div>
+
+        <section class="output-section answer">
+          <h2>一句话解释</h2>
+          <p id="quick-answer" class="answer-main"></p>
+          <p id="role-angle" class="note"></p>
+        </section>
+
+        <section class="flow-board">
+          <div class="flow-header">
+            <h2>6 步流程</h2>
+            <span id="flow-mode" class="flow-toggle"></span>
+          </div>
+          <div id="flow" class="flow"></div>
+        </section>
+
+        <section class="grid-2">
+          <div class="output-section">
+            <h2>角色责任</h2>
+            <div id="roles" class="role-list"></div>
+          </div>
+
+          <div class="output-section">
+            <h2>风险提醒</h2>
+            <div id="risks" class="risk-list"></div>
+          </div>
+        </section>
+
+        <section class="output-section">
+          <h2>3 道自测题</h2>
+          <div id="quiz" class="quiz-list"></div>
+        </section>
+      </section>
+    </section>
+
+    <p class="footer-note">
+      本 demo 只用于概念学习：不连接钱包、不发送交易、不读取或保存私钥、助记词、API Key、token、.env 文件。
+    </p>
+  </main>
+
+  <script>
+    const form = document.querySelector("#learning-form");
+    const questionInput = document.querySelector("#question");
+    const roleInput = document.querySelector("#role");
+    const levelInput = document.querySelector("#level");
+    const withPaymasterInput = document.querySelector("#with-paymaster");
+    const quickAnswer = document.querySelector("#quick-answer");
+    const roleAngle = document.querySelector("#role-angle");
+    const flowMode = document.querySelector("#flow-mode");
+    const flowEl = document.querySelector("#flow");
+    const rolesEl = document.querySelector("#roles");
+    const risksEl = document.querySelector("#risks");
+    const quizEl = document.querySelector("#quiz");
+    const paymasterMetric = document.querySelector("#paymaster-metric");
+    const paymasterMetricText = document.querySelector("#paymaster-metric-text");
+
+    const roleAngles = {
+      learner: "学习者视角：先抓住“用户意图 -> 聚合提交 -> 统一验证执行”这条主线，再补每个角色的细节。",
+      dapp: "DApp 视角：你关心的是如何把用户动作封装成 UserOperation，并把签名、nonce、gas、paymaster 数据交给基础设施处理。",
+      bundler: "Bundler 视角：你关心的是模拟验证、过滤无效 UserOperation、承担打包交易的 gas 风险并获得补偿。",
+      paymaster: "Paymaster 视角：你关心的是赞助策略、押金、风控和验证逻辑，避免被无效请求消耗资金。"
+    };
+
+    const intentAnswers = [
+      {
+        keywords: ["bundler", "打包", "交易池", "mempool", "普通交易池"],
+        text: "ERC-4337 需要 Bundler，是因为 UserOperation 不是普通以太坊交易；Bundler 负责在链下收集和模拟验证，再把一组有效 UserOperation 通过 EntryPoint 提交到链上。"
+      },
+      {
+        keywords: ["paymaster", "押金", "赞助", "gas", "代付"],
+        text: "Paymaster 像一层可编程的 gas 付款策略：它可以赞助用户，但必须在 EntryPoint 中有资金或押金，并通过验证逻辑限制谁能用、什么时候能用、失败成本谁承担。"
+      },
+      {
+        keywords: ["entrypoint", "入口", "handleops", "handleOps"],
+        text: "EntryPoint 是 ERC-4337 的统一链上入口：Bundler 调用 handleOps()，EntryPoint 依次验证账户、可选 Paymaster，再执行智能账户的目标操作。"
+      },
+      {
+        keywords: ["useroperation", "user op", "userop", "普通交易", "交易区别"],
+        text: "UserOperation 更像“用户想做什么”的结构化请求，里面包含 sender、nonce、callData、gas、签名等字段；真正上链的是 Bundler 提交给 EntryPoint 的普通交易。"
+      }
+    ];
+
+    const beginnerFlow = [
+      ["用户动作", "用户在 DApp 中点击操作，智能账户把意图整理成 UserOperation。"],
+      ["签名请求", "用户签的是 UserOperation 数据，而不是直接广播一笔普通交易。"],
+      ["Bundler 收集", "Bundler 从替代 mempool 或接口接收请求，并先在链下模拟。"],
+      ["EntryPoint 提交", "Bundler 把有效请求打包，调用 EntryPoint.handleOps() 上链。"],
+      ["验证与支付", "EntryPoint 调用智能账户验证签名和 nonce；如启用 Paymaster，也验证赞助规则。"],
+      ["执行结果", "验证通过后，智能账户执行 callData 中的目标动作，Bundler 获得 gas 补偿。"]
+    ];
+
+    const intermediateFlow = [
+      ["构造 UserOperation", "DApp 或账户 SDK 填入 sender、nonce、initCode、callData、gas 限额、签名和可选 paymasterAndData。"],
+      ["本地模拟", "Bundler 用 EntryPoint 的验证路径模拟 validateUserOp，排除会 revert 或无法付费的请求。"],
+      ["替代 mempool", "有效 UserOperation 可进入 ERC-4337 专用传播层，而不是普通交易池。"],
+      ["handleOps()", "Bundler 作为交易发送者调用 EntryPoint.handleOps()，一次提交一个或多个 UserOperation。"],
+      ["账户/Paymaster 验证", "EntryPoint 让智能账户验证签名、nonce 和费用；Paymaster 分支会额外验证赞助策略并锁定成本。"],
+      ["执行与结算", "EntryPoint 调用账户执行目标 callData，按实际 gas 消耗结算给 Bundler。"]
+    ];
+
+    const roleRows = {
+      learner: [
+        ["Smart Account", "真正执行用户动作的合约账户，验证规则由合约逻辑决定。"],
+        ["UserOperation", "描述用户意图的数据包，不是直接进入普通交易池的链上交易。"],
+        ["Bundler", "链下收集、模拟、打包请求，并把它们提交给 EntryPoint。"],
+        ["EntryPoint", "统一验证和执行入口，负责费用结算和调用账户逻辑。"]
+      ],
+      dapp: [
+        ["DApp / SDK", "把按钮点击、目标合约调用、gas 参数和签名请求整理成 UserOperation。"],
+        ["Smart Account", "根据账户合约规则验证签名、nonce、session key 或其他权限。"],
+        ["Bundler API", "接收 UserOperation，返回哈希和状态，失败时给出可诊断错误。"],
+        ["EntryPoint", "DApp 不直接绕过它执行账户抽象流程。"]
+      ],
+      bundler: [
+        ["Bundler", "过滤无效请求，防止自己为会失败的 UserOperation 付出链上 gas。"],
+        ["Simulation", "在提交前模拟账户验证、Paymaster 验证和执行成本。"],
+        ["Mempool Policy", "决定接受、传播、限流和排序哪些 UserOperation。"],
+        ["EntryPoint", "Bundler 通过 handleOps() 进入链上结算路径。"]
+      ],
+      paymaster: [
+        ["Paymaster", "按策略决定是否为某个 UserOperation 赞助 gas。"],
+        ["Deposit / Stake", "提供资金和安全约束，防止无成本滥用基础设施。"],
+        ["Validation", "检查用户、DApp、时间、额度、签名或白名单条件。"],
+        ["Post-op", "在执行后根据结果结算、记账或触发风控。"]
+      ]
+    };
+
+    const baseRisks = {
+      beginner: [
+        ["签名误解", "用户仍然要理解自己签的是哪类操作，不能把任何签名都当成安全确认。"],
+        ["基础设施信任", "Bundler 不应改变用户意图，但会影响提交时机、失败反馈和可用性。"],
+        ["合约账户风险", "智能账户逻辑、升级权限、模块和恢复规则都可能引入新风险。"]
+      ],
+      intermediate: [
+        ["模拟不等于保证", "链下模拟能减少失败，但状态变化、gas 估算和策略差异仍可能让上链执行失败。"],
+        ["DoS 与成本转移", "Bundler 要防止无效请求把验证成本转嫁给自己。"],
+        ["模块化权限", "Session key、插件和恢复模块需要明确权限边界。"]
+      ]
+    };
+
+    const paymasterRisks = [
+      ["赞助滥用", "Paymaster 需要押金、额度、白名单或签名策略，否则可能被大量请求耗尽资金。"],
+      ["失败付费", "即使目标调用失败，某些验证和执行成本仍可能由 Paymaster 或用户承担。"]
+    ];
+
+    function getIntentAnswer(question, withPaymaster) {
+      const normalized = question.toLowerCase();
+      const match = intentAnswers.find((item) =>
+        item.keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+      );
+
+      if (match) return match.text;
+
+      if (withPaymaster) {
+        return "ERC-4337 把用户意图拆成链下收集、链上统一验证和账户执行三段；Paymaster 是可选分支，用来按规则赞助或代付 gas。";
+      }
+
+      return "ERC-4337 把“谁发起交易”和“谁拥有账户权限”拆开：用户提交 UserOperation，Bundler 代为打包，EntryPoint 统一验证并让智能账户执行。";
+    }
+
+    function buildFlow(level, withPaymaster) {
+      const source = level === "intermediate" ? intermediateFlow : beginnerFlow;
+      return source.map((step, index) => {
+        if (!withPaymaster && index === 0) {
+          return [step[0], step[1].replace("、签名和可选 paymasterAndData", "和签名")];
+        }
+
+        if (!withPaymaster && index === 4) {
+          const title = step[0].replace("账户/Paymaster 验证", "账户验证");
+          const text = step[1]
+            .replace("；如启用 Paymaster，也验证赞助规则。", "。")
+            .replace("；Paymaster 分支会额外验证赞助策略并锁定成本。", "。");
+          return [title, text];
+        }
+
+        if (withPaymaster && index === 4) {
+          return [step[0], step[1], true];
+        }
+
+        return step;
+      });
+    }
+
+    function buildQuiz(withPaymaster, level) {
+      const quiz = [
+        {
+          q: "UserOperation 会像普通交易一样直接进入以太坊交易池吗？",
+          a: "不会。它通常先由 Bundler 收集和模拟，之后 Bundler 用普通交易调用 EntryPoint.handleOps()。"
+        },
+        {
+          q: "EntryPoint 的核心作用是什么？",
+          a: withPaymaster
+            ? "它是统一链上入口，负责调用账户验证、可选 Paymaster 验证、执行目标操作并结算费用。"
+            : "它是统一链上入口，负责调用账户验证、执行目标操作并结算费用。"
+        }
+      ];
+
+      if (withPaymaster) {
+        quiz.push({
+          q: "为什么 Paymaster 不能无条件赞助所有请求？",
+          a: "因为验证和执行都会消耗成本。Paymaster 需要押金、策略和风控，避免被无效或恶意请求消耗资金。"
+        });
+      } else if (level === "intermediate") {
+        quiz.push({
+          q: "Bundler 为什么要先模拟验证？",
+          a: "因为 Bundler 是上链交易发送者，模拟能减少为无效 UserOperation 支付 gas 的风险。"
+        });
+      } else {
+        quiz.push({
+          q: "智能账户和 EOA 的关键区别是什么？",
+          a: "EOA 主要由私钥直接控制；智能账户由合约逻辑定义权限、验证和执行规则。"
+        });
+      }
+
+      return quiz;
+    }
+
+    function buildRoles(role, withPaymaster) {
+      const rows = roleRows[role].map(([name, desc]) => [name, desc]);
+
+      if (withPaymaster) {
+        return rows;
+      }
+
+      return rows.map(([name, desc]) => [
+        name,
+        desc
+          .replace("账户验证、Paymaster 验证和执行成本", "账户验证和执行成本")
+          .replace("、paymaster 数据", "")
+          .replace("、签名或白名单条件", "或签名条件")
+      ]);
+    }
+
+    function buildRisks(level, withPaymaster) {
+      const risks = [...baseRisks[level]];
+
+      if (withPaymaster && level === "intermediate") {
+        risks[1] = ["DoS 与成本转移", "Bundler 和 Paymaster 都要防止无效请求把验证成本转嫁给自己。"];
+        risks[2] = ["模块化权限", "Session key、插件、恢复模块和 Paymaster 数据需要明确权限边界。"];
+      }
+
+      return withPaymaster ? [...risks, ...paymasterRisks] : risks;
+    }
+
+    function render() {
+      const question = questionInput.value.trim() || "我想理解 ERC-4337 的完整流程";
+      const role = roleInput.value;
+      const level = levelInput.value;
+      const withPaymaster = withPaymasterInput.checked;
+      const answer = getIntentAnswer(question, withPaymaster);
+      const flow = buildFlow(level, withPaymaster);
+      const risks = buildRisks(level, withPaymaster);
+
+      quickAnswer.textContent = `针对“${question}”：${answer}`;
+      roleAngle.textContent = roleAngles[role];
+      flowMode.textContent = withPaymaster ? "Paymaster 分支已开启" : "当前只展示用户付款路径";
+      paymasterMetric.textContent = withPaymaster ? "可选赞助" : "用户付款";
+      paymasterMetricText.textContent = withPaymaster
+        ? "Paymaster 可以按策略替用户支付或赞助 gas。"
+        : "未启用 Paymaster 时，账户需要自行覆盖 gas 成本。";
+
+      flowEl.innerHTML = flow.map((step, index) => `
+        <article class="step ${step[2] ? "paymaster" : ""}">
+          <span class="step-number">${index + 1}</span>
+          <h3>${step[0]}</h3>
+          <p>${step[1]}</p>
+        </article>
+      `).join("");
+
+      rolesEl.innerHTML = buildRoles(role, withPaymaster).map(([name, desc]) => `
+        <div class="role-item">
+          <div class="role-name">${name}</div>
+          <div class="role-desc">${desc}</div>
+        </div>
+      `).join("");
+
+      risksEl.innerHTML = risks.map(([name, desc]) => `
+        <div class="risk-item"><strong>${name}：</strong>${desc}</div>
+      `).join("");
+
+      quizEl.innerHTML = buildQuiz(withPaymaster, level).map((item, index) => `
+        <div class="quiz-item">
+          <div class="quiz-question"><span class="quiz-mark">Q${index + 1}</span><span>${item.q}</span></div>
+          <div class="quiz-answer">${item.a}</div>
+        </div>
+      `).join("");
+    }
+
+    document.querySelectorAll("[data-example]").forEach((button) => {
+      button.addEventListener("click", () => {
+        questionInput.value = button.dataset.example;
+        render();
+      });
+    });
+
+    document.querySelector("#reset-demo").addEventListener("click", () => {
+      questionInput.value = "我不懂为什么 ERC-4337 需要 Bundler";
+      roleInput.value = "learner";
+      levelInput.value = "beginner";
+      withPaymasterInput.checked = true;
+      render();
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      render();
+    });
+
+    [roleInput, levelInput, withPaymasterInput].forEach((input) => {
+      input.addEventListener("change", render);
+    });
+
+    questionInput.addEventListener("input", () => {
+      window.clearTimeout(questionInput.renderTimer);
+      questionInput.renderTimer = window.setTimeout(render, 160);
+    });
+
+    render();
+  </script>
+</body>
+</html>
